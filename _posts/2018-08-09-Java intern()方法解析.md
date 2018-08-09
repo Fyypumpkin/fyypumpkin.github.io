@@ -8,8 +8,7 @@ header-img: img/post-bg-alibaba.jpg
 catalog: true
 tags:
     - Java
-    - Jvm
-    - 类加载
+    - 常量池
 ---
 
 <p style="color: red">注: 本文中所在的环境为jdk1.8的版本，1.6版本以及之前版本的本文中所测试的代码结果是不同的，本文之探讨1.8以及之后版本的jdk环境下的测试</p>
