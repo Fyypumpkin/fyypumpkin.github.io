@@ -67,7 +67,7 @@ gitalk:
   repo: fyypumpkin.github.io    #仓库名称
   owner: Fyypumpkin    #github用户名
   admin: [Fyypumpkin]
-  id: window.location.pathname
+  id: window.location.pathname.substring((window.location.pathname.length - 30) ,window.location.pathname.length)
   distractionFreeMode: true #是否启用类似FB的阴影遮罩
 
 

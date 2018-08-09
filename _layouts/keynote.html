@@ -102,8 +102,8 @@ layout: default
                     repo: '{{site.gitalk.repo}}',
                     owner: '{{site.gitalk.owner}}',
                     admin: ['{{site.gitalk.admin}}'],
-                    distractionFreeMode: '{{site.gitalk.distractionFreeMode}}',
-                    id: window.location.pathname,
+                    distractionFreeMode: {{site.gitalk.distractionFreeMode}},
+                    id: {{site.gitalk.id}},
                     });
                     gitalk.render('gitalk-container');
                 </script>
