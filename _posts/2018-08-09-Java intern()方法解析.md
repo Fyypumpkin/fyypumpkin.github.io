@@ -4,7 +4,7 @@ title:      Java intern() 方法解析
 subtitle:   Java String.intern()方法，字符串常量池解析
 date:       2018-08-09
 author:     fyypumpkin
-header-img: img/intern/intern-title.jpg
+header-img: img/post-bg-alibaba.jpg
 catalog: true
 tags:
     - Java
