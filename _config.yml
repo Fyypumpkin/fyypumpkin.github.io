@@ -66,7 +66,7 @@ gitalk:
   clientSecret: 8260d6396c8b3b7333f8eb6ee676558a7e03bb1e    #生成的clientSecret
   repo: fyypumpkin.github.io    #仓库名称
   owner: Fyypumpkin    #github用户名
-  admin: ['Fyypumpkin']
+  admin: [Fyypumpkin]
   distractionFreeMode: true #是否启用类似FB的阴影遮罩
 
 
