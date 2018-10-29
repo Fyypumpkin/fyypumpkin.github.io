@@ -1,0 +1,200 @@
+---
+layout:     post
+title:      设计模式之 （Facade）外观模式
+subtitle:   看了下 Facade 模式，准备了一篇博客
+date:       2018-10-29
+author:     fyypumpkin
+header-img: img/post-bg-2015.jpg
+catalog: true
+tags:
+    - Java
+    - 设计模式
+---
+
+## Facade 外观模式
+
+最近几天有一个需求，要改一下比较久远之前写的代码，主要是一个权限的系统（其实就是很简单的用户角色资源的实现），发现之前代码中居然有 Facade 这个字眼，
+因为正好最近看了一点点的设计模式，感觉这个单词很熟悉，于是就查阅了一下，发现正是设计模式中的 Facade 模式，然而仔细阅读了之前的代码，发现之前对于这个设计模式，
+使用的姿势不太对，简单点讲，就是我所写的不能叫 Facade 外观模式，于是就再次查阅了相关资料，准备了一个博客 （后续会把其他的设计模式都加入到我的博客中来）
+
+### 什么叫 Facade 外观模式呢？
+
+这么说吧，举一个餐厅的例子，平时我们都在公司上班，吃饭一般都会去外面餐厅吃饭，餐厅会有统一的服务员，你告诉服务员你要吃什么，整个做菜的过程都不需要你去关心，而双休日时，
+我们在家里休息，中午可能会自己烧菜，那么我们就要去买菜，买来后需要将菜烧好，整个过程都有我们自己去协调。
+
+在日常的开发中，我们经常会碰到要和很多的系统打交道，一个客户类需要和多个业务系统进行数据的访问，并且数据要汇总，这个过程就好比我们自己去买菜烧饭，所有的过程都需要我们客户类自己去关心自己去组装，
+所以这个时候，就需要有一个像餐厅服务员一样的角色，来协调这些系统间的访问，由这个角色和客户以及业务系统之间打交道，我理解这个角色就叫 Facade 类。
+
+### Facade 外观模式的结构图
+
+我画了一个示意图
+
+![](./img/2018-10-29-Facade.png)
+
+由上面的图片看到，Facade 模式中包含了两种角色
+
+> 1.Facade （外观角色）：他是一个和 client 用户打交道的，他会将一个 client 发来的请求 分发到各个子系统（业务系统）中去，执行完成后在返回给 client 用户。
+> 2.SubSystem (业务系统/子系统)： 在一个系统中，会包含多个业务系统，会实现不同的功能，对于业务系统来说，并不感知外观类的存在，对于业务系统来说，他们会认为只是另一个用户请求过来的访问
+
+### Facade 外观模式代码演示
+
+上面说的太过于理论化，下面我直接用最简单的示意代码来加一说明。
+
+首先我设计了3个子系统，三个子系统中分别会有自己的 doWord() 来完成不同的功能:
+
+> 子系统一：
+
+```java
+public class ClassSubSystem01 {
+    public void doWork() {
+        System.out.println("ClassSubSystem01 doing working");
+    }
+}
+```
+
+> 子系统二
+
+```java
+class ClassSubSystem02 {
+    public void doWork() {
+        System.out.println("ClassSubSystem02 doing working");
+    }
+}
+```
+
+> 子系统三
+
+```java
+class ClassSubSystem03 {
+    public void doWork() {
+        System.out.println("ClassSubSystem03 doing working");
+    }
+}
+```
+
+三个子系统分别会实现自己的功能，我在这里直接就用一行打印来说明
+
+> Facade 外观类
+
+```java
+class Facade {
+    ClassSubSystem01 classSubSystem01 = new ClassSubSystem01();
+    ClassSubSystem02 classSubSystem02 = new ClassSubSystem02();
+    ClassSubSystem03 classSubSystem03 = new ClassSubSystem03();
+    
+    // doSomeWork会调用三个子系统的相关接口
+    public void doSomeWorks() {
+        classSubSystem01.doWork();
+        classSubSystem02.doWork();
+        classSubSystem03.doWork();
+    }
+}
+```
+
+访问 Facade 类的 doSomeWork 会调用三个子系统的相关接口，最后我们再来模拟 Client 用户来调用
+
+> Client 用户类
+
+```java
+class Client {
+    public static void main(String[] args) {
+        Facade facade = new Facade();
+        facade.doSomeWorks();
+    }
+}
+``` 
+
+用户类中，我直接调用了外观类的相关方法，执行后可以看到打印了三行，分别是三个子系统输出的
+
+```java
+ClassSubSystem01 doing working
+ClassSubSystem02 doing working
+ClassSubSystem03 doing working
+
+Process finished with exit code 0
+```
+
+通过上面简单的示意代码，大概就能说明 Facade 模式是怎样的，但是实际开发中，并不会这么使用，
+因为这样一但需要新增或者删除，修改子系统的代码时，就需要同时修改外观类的代码或者修改用户的代码，
+这样一定是不能在真正开发中所使用的，所以下面我们就来稍微修改一下上面的改吗，使得能够灵活的增删子系统。
+
+> 我们引入一个新的子系统
+
+```java
+class ClassSubSystem03ForUpdate {
+    public void doWork() {
+        System.out.println("ClassSubSystem03ForUpdate doing working");
+    }
+}
+```
+
+> 将 Facade 抽象
+
+```java
+abstract class Facade {
+    abstract void doSomeWorks();
+}
+```
+
+> 实现具体的 Facade 类
+
+```java
+// 新的一个 Facade
+class MyNewFacade extends Facade {
+    ClassSubSystem01 classSubSystem01 = new ClassSubSystem01();
+    ClassSubSystem02 classSubSystem02 = new ClassSubSystem02();
+    ClassSubSystem03ForUpdate classSubSystem03ForUpdate = new ClassSubSystem03ForUpdate();
+
+    @Override
+    void doSomeWorks() {
+        classSubSystem01.doWork();
+        classSubSystem02.doWork();
+        classSubSystem03ForUpdate.doWork();
+    }
+}
+
+// 老的 Facade
+class MyFacade extends Facade {
+    ClassSubSystem01 classSubSystem01 = new ClassSubSystem01();
+    ClassSubSystem02 classSubSystem02 = new ClassSubSystem02();
+    ClassSubSystem03 classSubSystem03 = new ClassSubSystem03();
+
+    @Override
+    public void doSomeWorks() {
+        classSubSystem01.doWork();
+        classSubSystem02.doWork();
+        classSubSystem03.doWork();
+    }
+}
+```
+
+> 客户端
+
+```java
+class Client {
+    static Map<String, Facade> config = new ConcurrentHashMap<>();
+
+    public static void main(String[] args) {
+        // 我使用一个 Map 模拟配置 
+        config.put("facade", new MyFacade());
+        config.put("facadeNew", new MyNewFacade());
+        Facade facade = config.get("facadeNew");
+        facade.doSomeWorks();
+    }
+}
+```
+
+客户端中，我引入了一个 Map 用来存放相关的配置，当我们运行该客户端代码时，会打印出：
+
+```java
+ClassSubSystem01 doing working
+ClassSubSystem02 doing working
+ClassSubSystem03ForUpdate doing working
+
+Process finished with exit code 0
+```
+
+我们将 Facade 抽象化，再通过配置的形式，去获取具体的 Facade，这使得当需要新增一个新的时，只需要去增加相关的配置，而不需要去更改原先的 Facade 代码，
+实际开发中，不会单用一个设计模式，往往是多个设计模式择优，设计模式也只是一种方向我认为，也是长期所积累出来的
+
+> 本文首次发布于 [fyypumpkin Blog](http://fyypumpkin.github.io), 作者 [@fyypumpkin](http://github.com/fyypumpkin) ,转载请保留原文链接.
