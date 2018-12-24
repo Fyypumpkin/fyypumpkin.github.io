@@ -51,7 +51,7 @@ class XXX {
 
 可以看到， ReentrantLock 默认使用的是非公平 Sync 的实现，看一下 Sync 的继承图
 
-![](img/img/NonFair.png)
+![](../img/img/NonFair.png)
 
 NonFairSync -> Sync -> AbstractQueuedSynchronizer -> AbstractOwnableSynchronizer
 

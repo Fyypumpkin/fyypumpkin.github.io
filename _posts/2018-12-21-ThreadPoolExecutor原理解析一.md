@@ -20,7 +20,7 @@ tags:
 
 我大致画了一张图
 
-![](img/img/ExecutorServiceOverview.jpg)
+![](../img/img/ExecutorServiceOverview.jpg)
 
 大致流程就是：
 
@@ -151,7 +151,7 @@ tags:
 
 看一下 `execute` 的执行流程图
 
-![](img/img/execute.jpg)
+![](../img/img/execute.jpg)
 
 可以清晰的看到，在 `execute` 方法中，就存在着非常清晰的逻辑，如何处理这个任务，如何拒绝这个任务等。
 
@@ -262,6 +262,7 @@ tags:
 finally 中将锁释放，如果新增成功，就会调用线程的 `start` 方法开始执行
 
 > 看一下 Worker 类
+
 ```java
     private final class Worker
         extends AbstractQueuedSynchronizer
@@ -332,6 +333,7 @@ finally 中将锁释放，如果新增成功，就会调用线程的 `start` 方
 
 
 > runWorker 和 getTask 方法
+
 ```java
 final void runWorker(Worker w) {
         // todo 获取当前线程
