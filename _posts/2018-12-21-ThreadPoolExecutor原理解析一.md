@@ -4,7 +4,7 @@ title:      Java ThreadPoolExecutor 实现一
 subtitle:   了解 Java J.U.C 包下的 ThreadPoolExecutor 原理
 date:       2018-12-11
 author:     fyypumpkin
-header-img: img//post-bg-debug.png
+header-img: img/post-bg-debug.png
 catalog: true
 tags:
     - Java
@@ -20,7 +20,7 @@ tags:
 
 我大致画了一张图
 
-![](./img/ExecutorServiceOverview.jpg)
+![](img/img/ExecutorServiceOverview.jpg)
 
 大致流程就是：
 
@@ -151,7 +151,7 @@ tags:
 
 看一下 `execute` 的执行流程图
 
-![](./img/execute.jpg)
+![](img/img/execute.jpg)
 
 可以清晰的看到，在 `execute` 方法中，就存在着非常清晰的逻辑，如何处理这个任务，如何拒绝这个任务等。
 
