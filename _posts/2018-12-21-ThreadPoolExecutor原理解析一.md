@@ -20,7 +20,7 @@ tags:
 
 我大致画了一张图
 
-![](../assets/img/ExecutorServiceOverview.jpg)
+![](/assets/img/ExecutorServiceOverview.jpg)
 
 大致流程就是：
 
@@ -151,7 +151,7 @@ tags:
 
 看一下 `execute` 的执行流程图
 
-![](../assets/img/execute.jpg)
+![](/assets/img/execute.jpg)
 
 可以清晰的看到，在 `execute` 方法中，就存在着非常清晰的逻辑，如何处理这个任务，如何拒绝这个任务等。
 
