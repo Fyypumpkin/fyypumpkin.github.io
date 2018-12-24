@@ -330,8 +330,8 @@ finally 中将锁释放，如果新增成功，就会调用线程的 `start` 方
 `Worker` 类实现了 `Runnable` 接口以及继承了 `AbstractQueuedSynchronizer`，可以说这个 `Worker` 既是一个锁，也是一个线程，`Worker` 类比较简单
 我在代码中加了注释门就不详细解释了，下面看一下 `Worker` 中的核心方法，`runWorker`
 
-> runWorker 和 getTask 方法
 
+> runWorker 和 getTask 方法
 ```java
 final void runWorker(Worker w) {
         // todo 获取当前线程
