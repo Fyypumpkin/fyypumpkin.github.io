@@ -4,7 +4,7 @@ title:      Java ThreadPoolExecutor 实现二 之 LinkedBlockingQueue
 subtitle:   了解 Java J.U.C 包下的 ThreadPoolExecutor 原理之 LinkedBlockingQueue
 date:       2018-12-11
 author:     fyypumpkin
-header-img: img/post-bg-debug.png
+header-img: img/home-bg-o.jpg
 catalog: true
 tags:
     - Java
