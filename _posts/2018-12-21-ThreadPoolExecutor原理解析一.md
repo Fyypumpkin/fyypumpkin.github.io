@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      Java ThreadPoolExecutor 实现一
+title:      Java ThreadPoolExecutor 实现一 之 ThreadPoolExecutor
 subtitle:   了解 Java J.U.C 包下的 ThreadPoolExecutor 原理
 date:       2018-12-11
 author:     fyypumpkin
