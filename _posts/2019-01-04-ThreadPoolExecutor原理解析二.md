@@ -2,7 +2,7 @@
 layout:     post
 title:      Java ThreadPoolExecutor 实现二 之 LinkedBlockingQueue
 subtitle:   了解 Java J.U.C 包下的 ThreadPoolExecutor 原理之 LinkedBlockingQueue
-date:       2018-12-11
+date:       2010-01-04
 author:     fyypumpkin
 header-img: img/home-bg-o.jpg
 catalog: true
@@ -275,6 +275,33 @@ LinkedBlockingQueue 中包含了增加元素方法：put（阻塞），offer（�
         }
     }
 ```
+
+> toArray 方法 （有个小坑）
+
+```java
+    public <T> T[] toArray(T[] a) {
+    // 全局锁
+        fullyLock();
+        try {
+            int size = count.get();
+            // 如果传入的数组大小小于队列的长度，就会新建一个数组，注意这个时候你穿金来的对象已经不使用了，外部一定要接收返回值，不能使用传入的对象
+            if (a.length < size)
+                a = (T[])java.lang.reflect.Array.newInstance
+                    (a.getClass().getComponentType(), size);
+
+            int k = 0;
+            for (Node<E> p = head.next; p != null; p = p.next)
+                a[k++] = (T)p.item;
+            if (a.length > k)
+                a[k] = null;
+            return a;
+        } finally {
+            fullyUnlock();
+        }
+    }
+```
+
+`toArray` 方法中，数组的引用一定要注意，因为可能因为容量原因而是用新的数组，在调用方法的时候一定要使用返回值重新赋值
 
 本片博客内容就暂时这么多，下一片博客会对 SynchronousQueue 进行一个源码分析~
 
