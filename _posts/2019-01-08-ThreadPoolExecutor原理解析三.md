@@ -1,7 +1,7 @@
 ---
 layout:     post
-title:      Java ThreadPoolExecutor 实现三 之 SynchronousQueue
-subtitle:   了解 Java J.U.C 包下的 ThreadPoolExecutor 原理之 SynchronousQueue （一）
+title:      Java ThreadPoolExecutor 实现 之 SynchronousQueue （三）
+subtitle:   了解 Java J.U.C 包下的 ThreadPoolExecutor 原理之 SynchronousQueue 
 date:       2019-01-08
 author:     fyypumpkin
 header-img: img/post-bg-digital-native.jpg
