@@ -20,6 +20,20 @@ tags:
 LinkedList 内部实现是一个双向的链表，所以在初始化 LinkedList 的时候，不需要指定容量，因此其构造器也很简单。
 
 ```java
+
+   //    todo 双向链表
+    private static class Node<E> {
+        E item;
+        Node<E> next;
+        Node<E> prev;
+
+        Node(Node<E> prev, E element, Node<E> next) {
+            this.item = element;
+            this.next = next;
+            this.prev = prev;
+        }
+    }
+    
     public LinkedList() {
     }
     
@@ -77,6 +91,7 @@ LinkedList 内部实现是一个双向的链表，所以在初始化 LinkedList 
     }
 ```
 
+可以看到，LinkedList 中的 Node 节点就是一个双向的链表，
 构造器一共有两种，一种是空构造，一种是复制的构造，将其他集合类型的数据复制到新的 LinkedList 中，通过 addAll 方法，addAll 方法也比较简单。
 
 看一下内部私有的一些操作方法
