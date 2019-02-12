@@ -104,7 +104,7 @@ ReentrantLock 中的 lock() 直接将整个逻辑托付给了 Sync 类，这里�
 ```
 
 可以看出来， AQS 通过这个 `state` 来标识当前的同步状态，初始为 0 ，表示没有人占用当前锁，则当前线程通过 `compareAndSetState(0, 1)` 来尝试获取锁， 获取成功后，就直接将当前线程设置为独占
-否则，救护调用 `acquire` 方法，`acquire` 方法的实现也是在 AQS 中。
+否则，就会调用 `acquire` 方法，`acquire` 方法的实现也是在 AQS 中。
 
 ```java
    public final void acquire(int arg) {

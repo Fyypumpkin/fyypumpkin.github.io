@@ -272,8 +272,8 @@ public class ReentrantLockConsumer {
 
 `doSignal` 方法中是一个 do-while 循环, 这个循环会不断检查 `transferForSignal` 的状态和 `firstWaiter` 是否为 null，看一下 `transferForSignal` 代码。
 
-
 > transferForSignal
+
 ```java
     final boolean transferForSignal(Node node) {
         /*
@@ -282,7 +282,6 @@ public class ReentrantLockConsumer {
         // 这里会做值的变更，将CONDITION状态变更为0，变更成功后即将放入AQS队列
         if (!compareAndSetWaitStatus(node, Node.CONDITION, 0))
             return false;
-
         Node p = enq(node);
         int ws = p.waitStatus;
         //如果结点p的状态为cancel 或者修改waitStatus失败，则直接唤醒,正常情况下应该是不会唤醒的
@@ -344,6 +343,18 @@ AQS 队列来维护了
             thread2.start();
 
         }
+}
+```
+
+结果
+
+```java
+waitThread正在运行。。。。
+waitThread停止运行，等待一个signal
+signalThread正在运行。。。。
+signalThread发送一个signal
+signalThread发送一个signal后，结束
+waitThread获得一个signal，继续执行
 ```
 
 1、首先，线程1调用lock.lock()时，由于此时锁并没有被其它线程占用，因此线程1直接获得锁并不会进入AQS同步队列中进行等待。
