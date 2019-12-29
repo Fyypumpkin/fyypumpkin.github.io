@@ -59,7 +59,9 @@ try {
           // 4.BeanFactoryPostProcessor
 	invokeBeanFactoryPostProcessors(beanFactory);
 
-	// 这里会初始化所有实现了 BeanPostProcessors 接口的类 （ApplicationContextAware 属于 ApplicationContextAwareProcessor，也继承于 BeanPostProcessors 但是这个 processor 会在 prepareBeanFactory 提前注册到 beanFactory 中， LoadTimeWeaverAwareProcessor 同上）
+	// 这里会初始化所有实现了 BeanPostProcessors 接口的类
+	// （ApplicationContextAware 属于 ApplicationContextAwareProcessor，也继承于 BeanPostProcessors 但是这个 processor 会在 prepareBeanFactory 提前注册到 beanFactory 中， LoadTimeWeaverAwareProcessor 同上）
+	// InstantiationAwareBeanPostProcessor 注册会写标识 （这个后续会单独开博客讲一下）
 	// Register bean processors that intercept bean creation.
 	registerBeanPostProcessors(beanFactory);
 
@@ -90,6 +92,53 @@ try {
 ```
 
 上面的流程下面就重要的方法一一详述
+
+#### obtainFreshBeanFactory
+
+```java
+
+protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
+	refreshBeanFactory();
+	return getBeanFactory();
+}
+
+/**
+ * This implementation performs an actual refresh of this context's underlying
+ * bean factory, shutting down the previous bean factory (if any) and
+ * initializing a fresh bean factory for the next phase of the context's lifecycle.
+ * BeanFactory
+ * ListableBeanFactory HierarchicalBeanFactory AutowireCapableBeanFactory
+ *     |          |   |                                         |
+ *     |        ApplicationContext                              |
+ *     |                                                        |
+ * ConfigurableListableBeanFactory                    AbstractAutowireCapableBeanFactory
+ *                              |                      |
+ *                             DefaultListableBeanFactory
+ */
+@Override
+protected final void refreshBeanFactory() throws BeansException {
+    // 当前有 beanFactory 就销毁
+	if (hasBeanFactory()) {
+		destroyBeans();
+		closeBeanFactory();
+	}
+	try {
+		// 新建一个 BeanFactory （DefaultListableBeanFactory）
+		DefaultListableBeanFactory beanFactory = createBeanFactory();
+		beanFactory.setSerializationId(getId());
+		// 自定义工厂配置 （允许循环引用，覆盖定义）
+		customizeBeanFactory(beanFactory);
+		// 加载 bean 定义 （BeanDefinition）（加载 bean 定义会在之后博客中解析）
+		loadBeanDefinitions(beanFactory);
+		synchronized (this.beanFactoryMonitor) {
+			this.beanFactory = beanFactory;
+		}
+	} catch (IOException ex) {
+		throw new ApplicationContextException("I/O error parsing bean definition source for " + getDisplayName(), ex);
+	}
+}
+
+```
 
 
 ####
