@@ -26,11 +26,11 @@ tags:
 
 ```java
 
-      // Prepare this context for refreshing.
-      // 启动容器的一些准备，环境设置等
+// Prepare this context for refreshing.
+// 启动容器的一些准备，环境设置等
 prepareRefresh();
 
-      // 这里会生成一个  beanFactory，替换当前的 beanFactory （DefaultListableBeanFactory）
+// 这里会生成一个  beanFactory，替换当前的 beanFactory （DefaultListableBeanFactory）
 // 同时，配置文件就会解析成一个个 Bean 定义，注册到 BeanFactory 中，当然，这里说的 Bean 还没有初始化，只是配置信息都提取出来了，
 // 注册也只是将这些信息都保存到了注册中心(说到底核心是一个 beanName -> beanDefinition 的 map)，
 // Tell the subclass to refresh the internal bean factory.
@@ -95,6 +95,8 @@ try {
 
 #### obtainFreshBeanFactory
 
+refreshBeanFactory 里面主要就是新建了一个 beanFactory，同时加载 bean 定义
+
 ```java
 
 protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
@@ -108,9 +110,9 @@ protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
  * initializing a fresh bean factory for the next phase of the context's lifecycle.
  * BeanFactory
  * ListableBeanFactory HierarchicalBeanFactory AutowireCapableBeanFactory
- *     |          |   |                                         |
- *     |        ApplicationContext                              |
- *     |                                                        |
+ *     |            |   |                                         |
+ *     |        ApplicationContext                                |
+ *     |                                                          |
  * ConfigurableListableBeanFactory                    AbstractAutowireCapableBeanFactory
  *                              |                      |
  *                             DefaultListableBeanFactory
@@ -119,7 +121,9 @@ protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
 protected final void refreshBeanFactory() throws BeansException {
     // 当前有 beanFactory 就销毁
 	if (hasBeanFactory()) {
+		// 清除 bean
 		destroyBeans();
+		// 清除 bean 工厂
 		closeBeanFactory();
 	}
 	try {
@@ -141,6 +145,61 @@ protected final void refreshBeanFactory() throws BeansException {
 ```
 
 
+### prepareBeanFactory
+
+这个方法比较重要的地方在于设置了一个 ApplicationContextAwareProcessor，这个我们平时继承 ApplicationContextAware
+
+```java
+// 设置类加载器 （使用加载此类的类加载器）
+// Tell the internal bean factory to use the context's class loader etc.
+beanFactory.setBeanClassLoader(getClassLoader());
+beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
+beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
+
+// 添加一个 BeanPostProcessor，这个 processor 比较简单：
+// 实现了 Aware 接口的 beans 在初始化的时候，这个 processor 负责回调，
+// 这个我们很常用，如我们会为了获取 ApplicationContext 而 implement ApplicationContextAware
+// 注意：它不仅仅回调 ApplicationContextAware，
+// 还会负责回调 EnvironmentAware、ResourceLoaderAware 等
+// Configure the bean factory with context callbacks.
+beanFactory.addBeanPostProcessor(new ApplicationContextAwareProcessor(this));
+beanFactory.ignoreDependencyInterface(EnvironmentAware.class);
+beanFactory.ignoreDependencyInterface(EmbeddedValueResolverAware.class);
+beanFactory.ignoreDependencyInterface(ResourceLoaderAware.class);
+beanFactory.ignoreDependencyInterface(ApplicationEventPublisherAware.class);
+beanFactory.ignoreDependencyInterface(MessageSourceAware.class);
+beanFactory.ignoreDependencyInterface(ApplicationContextAware.class);
+
+// BeanFactory interface not registered as resolvable type in a plain factory.
+// MessageSource registered (and found for autowiring) as a bean.
+beanFactory.registerResolvableDependency(BeanFactory.class, beanFactory);
+beanFactory.registerResolvableDependency(ResourceLoader.class, this);
+beanFactory.registerResolvableDependency(ApplicationEventPublisher.class, this);
+beanFactory.registerResolvableDependency(ApplicationContext.class, this);
+
+// Register early post-processor for detecting inner beans as ApplicationListeners.
+beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
+
+// Detect a LoadTimeWeaver and prepare for weaving, if found.
+if (beanFactory.containsBean(LOAD_TIME_WEAVER_BEAN_NAME)) {
+	beanFactory.addBeanPostProcessor(new LoadTimeWeaverAwareProcessor(beanFactory));
+	// Set a temporary ClassLoader for type matching.
+	beanFactory.setTempClassLoader(new ContextTypeMatchClassLoader(beanFactory.getBeanClassLoader()));
+}
+
+// Register default environment beans.
+if (!beanFactory.containsLocalBean(ENVIRONMENT_BEAN_NAME)) {
+	beanFactory.registerSingleton(ENVIRONMENT_BEAN_NAME, getEnvironment());
+}
+if (!beanFactory.containsLocalBean(SYSTEM_PROPERTIES_BEAN_NAME)) {
+	beanFactory.registerSingleton(SYSTEM_PROPERTIES_BEAN_NAME, getEnvironment().getSystemProperties());
+}
+if (!beanFactory.containsLocalBean(SYSTEM_ENVIRONMENT_BEAN_NAME)) {
+	beanFactory.registerSingleton(SYSTEM_ENVIRONMENT_BEAN_NAME, getEnvironment().getSystemEnvironment());
+}
+```
+
 ####
+
 
 > 本文首次发布于 [fyypumpkin Blog](http://fyypumpkin.github.io), 作者 [@fyypumpkin](http://github.com/fyypumpkin) ,转载请保留原文链接.
