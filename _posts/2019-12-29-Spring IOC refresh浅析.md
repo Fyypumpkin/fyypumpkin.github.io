@@ -199,6 +199,363 @@ if (!beanFactory.containsLocalBean(SYSTEM_ENVIRONMENT_BEAN_NAME)) {
 }
 ```
 
+### invokeBeanFactoryPostProcessors
+
+这一步会初始化实现了 BeanFactoryPostProcessors 接口的类，BeanDefinitionRegistryPostProcessor 这个特殊的接口会优先筛选出来，并且按照实现了 PriorityOrdered， Ordered 和没有实现优先级相关接口的顺序进行 bean 的初始化切调用响应的回调方法，处理完 BeanDefinitionRegistryPostProcessor 相关的类之后，初始化所有实现了 BeanFactoryPostProcessors 的接口，并且按照上面的优先级进行 bean 的初始化，下面看下代码，大部分都会有注释解释
+
+```java
+protected void invokeBeanFactoryPostProcessors(ConfigurableListableBeanFactory beanFactory) {
+  // 调用 BeanFactoryPostProcessor
+  // 例如可以通过 BeanDefinitionRegistryPostProcessor 新加自己的 bean 定义（DubboContainer）
+  PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(beanFactory, getBeanFactoryPostProcessors());
+
+  // Detect a LoadTimeWeaver and prepare for weaving, if found in the meantime
+  // (e.g. through an @Bean method registered by ConfigurationClassPostProcessor)
+  if (beanFactory.getTempClassLoader() == null && beanFactory.containsBean(LOAD_TIME_WEAVER_BEAN_NAME)) {
+    beanFactory.addBeanPostProcessor(new LoadTimeWeaverAwareProcessor(beanFactory));
+    beanFactory.setTempClassLoader(new ContextTypeMatchClassLoader(beanFactory.getBeanClassLoader()));
+  }
+}
+
+public static void invokeBeanFactoryPostProcessors(
+    ConfigurableListableBeanFactory beanFactory, List<BeanFactoryPostProcessor> beanFactoryPostProcessors) {
+
+  // 所有实现了 BeanFactoryPostProcessor （包括 BeanDefinitionRegistryPostProcessor） 并且已经执行过回调方法的 beanName
+  // Invoke BeanDefinitionRegistryPostProcessors first, if any.
+  Set<String> processedBeans = new HashSet<>();
+
+  // 判断beanFactory是否为BeanDefinitionRegistry，在这里普通的beanFactory是DefaultListableBeanFactory,而DefaultListableBeanFactory实现了BeanDefinitionRegistry接口，因此这边为true
+  // 这里会调用实现初始化好的 BeanFactoryPostProcessor 并调用回调
+  if (beanFactory instanceof BeanDefinitionRegistry) {
+    BeanDefinitionRegistry registry = (BeanDefinitionRegistry) beanFactory;
+    List<BeanFactoryPostProcessor> regularPostProcessors = new ArrayList<>();
+    List<BeanDefinitionRegistryPostProcessor> registryProcessors = new ArrayList<>();
+
+    for (BeanFactoryPostProcessor postProcessor : beanFactoryPostProcessors) {
+      if (postProcessor instanceof BeanDefinitionRegistryPostProcessor) {
+        BeanDefinitionRegistryPostProcessor registryProcessor =
+            (BeanDefinitionRegistryPostProcessor) postProcessor;
+        registryProcessor.postProcessBeanDefinitionRegistry(registry);
+        registryProcessors.add(registryProcessor);
+      }
+      else {
+        regularPostProcessors.add(postProcessor);
+      }
+    }
+
+    // Do not initialize FactoryBeans here: We need to leave all regular beans
+    // uninitialized to let the bean factory post-processors apply to them!
+    // Separate between BeanDefinitionRegistryPostProcessors that implement
+    // PriorityOrdered, Ordered, and the rest.
+    List<BeanDefinitionRegistryPostProcessor> currentRegistryProcessors = new ArrayList<>();
+
+    // 先扫描实现了 BeanDefinitionRegistryPostProcessor 并且是 PriorityOrdered 的 beanName
+    // First, invoke the BeanDefinitionRegistryPostProcessors that implement PriorityOrdered.
+    String[] postProcessorNames =
+        beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor.class, true, false);
+    for (String ppName : postProcessorNames) {
+      if (beanFactory.isTypeMatch(ppName, PriorityOrdered.class)) {
+        currentRegistryProcessors.add(beanFactory.getBean(ppName, BeanDefinitionRegistryPostProcessor.class));
+        processedBeans.add(ppName);
+      }
+    }
+    sortPostProcessors(currentRegistryProcessors, beanFactory);
+    registryProcessors.addAll(currentRegistryProcessors);
+    invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry);
+    currentRegistryProcessors.clear();
+
+    // 然后先扫描实现了 BeanDefinitionRegistryPostProcessor 并且是 Ordered 的 beanName
+    // Next, invoke the BeanDefinitionRegistryPostProcessors that implement Ordered.
+    postProcessorNames = beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor.class, true, false);
+    for (String ppName : postProcessorNames) {
+      if (!processedBeans.contains(ppName) && beanFactory.isTypeMatch(ppName, Ordered.class)) {
+        currentRegistryProcessors.add(beanFactory.getBean(ppName, BeanDefinitionRegistryPostProcessor.class));
+        processedBeans.add(ppName);
+      }
+    }
+    sortPostProcessors(currentRegistryProcessors, beanFactory);
+    registryProcessors.addAll(currentRegistryProcessors);
+    invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry);
+    currentRegistryProcessors.clear();
+
+    // 再循环获取实现了 BeanDefinitionRegistryPostProcessor， 如果在当前的 set 中没有，就调用 getBean 方法获取 bean（
+    // 这里实际上我认为是会初始化整个 bean 的）getBean 方法在后续的 finishBeanFactoryInitialization 中解析
+    // Finally, invoke all other BeanDefinitionRegistryPostProcessors until no further ones appear.
+    boolean reiterate = true;
+    while (reiterate) {
+      reiterate = false;
+      postProcessorNames = beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor.class, true, false);
+      for (String ppName : postProcessorNames) {
+        if (!processedBeans.contains(ppName)) {
+          currentRegistryProcessors.add(beanFactory.getBean(ppName, BeanDefinitionRegistryPostProcessor.class));
+          processedBeans.add(ppName);
+          reiterate = true;
+        }
+      }
+      sortPostProcessors(currentRegistryProcessors, beanFactory);
+      registryProcessors.addAll(currentRegistryProcessors);
+      // 调用 postProcessBeanDefinitionRegistry 方法
+      invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry);
+      currentRegistryProcessors.clear();
+    }
+
+    // Now, invoke the postProcessBeanFactory callback of all processors handled so far.
+    invokeBeanFactoryPostProcessors(registryProcessors, beanFactory);
+    invokeBeanFactoryPostProcessors(regularPostProcessors, beanFactory);
+  }
+
+  else {
+    // Invoke factory processors registered with the context instance.
+    invokeBeanFactoryPostProcessors(beanFactoryPostProcessors, beanFactory);
+  }
+
+  // 最后扫描所有实现了 BeanFactoryPostProcessor 的 bean，和上面操作类似
+  // Do not initialize FactoryBeans here: We need to leave all regular beans
+  // uninitialized to let the bean factory post-processors apply to them!
+  String[] postProcessorNames =
+      beanFactory.getBeanNamesForType(BeanFactoryPostProcessor.class, true, false);
+
+  // Separate between BeanFactoryPostProcessors that implement PriorityOrdered,
+  // Ordered, and the rest.
+  List<BeanFactoryPostProcessor> priorityOrderedPostProcessors = new ArrayList<>();
+  List<String> orderedPostProcessorNames = new ArrayList<>();
+  List<String> nonOrderedPostProcessorNames = new ArrayList<>();
+  for (String ppName : postProcessorNames) {
+    if (processedBeans.contains(ppName)) {
+      // skip - already processed in first phase above
+    }
+    else if (beanFactory.isTypeMatch(ppName, PriorityOrdered.class)) {
+      priorityOrderedPostProcessors.add(beanFactory.getBean(ppName, BeanFactoryPostProcessor.class));
+    }
+    else if (beanFactory.isTypeMatch(ppName, Ordered.class)) {
+      orderedPostProcessorNames.add(ppName);
+    }
+    else {
+      nonOrderedPostProcessorNames.add(ppName);
+    }
+  }
+
+  // First, invoke the BeanFactoryPostProcessors that implement PriorityOrdered.
+  sortPostProcessors(priorityOrderedPostProcessors, beanFactory);
+  invokeBeanFactoryPostProcessors(priorityOrderedPostProcessors, beanFactory);
+
+  // Next, invoke the BeanFactoryPostProcessors that implement Ordered.
+  List<BeanFactoryPostProcessor> orderedPostProcessors = new ArrayList<>(orderedPostProcessorNames.size());
+  for (String postProcessorName : orderedPostProcessorNames) {
+    orderedPostProcessors.add(beanFactory.getBean(postProcessorName, BeanFactoryPostProcessor.class));
+  }
+  sortPostProcessors(orderedPostProcessors, beanFactory);
+  invokeBeanFactoryPostProcessors(orderedPostProcessors, beanFactory);
+
+  // Finally, invoke all other BeanFactoryPostProcessors.
+  List<BeanFactoryPostProcessor> nonOrderedPostProcessors = new ArrayList<>(nonOrderedPostProcessorNames.size());
+  for (String postProcessorName : nonOrderedPostProcessorNames) {
+    nonOrderedPostProcessors.add(beanFactory.getBean(postProcessorName, BeanFactoryPostProcessor.class));
+  }
+
+  invokeBeanFactoryPostProcessors(nonOrderedPostProcessors, beanFactory);
+
+  // Clear cached merged bean definitions since the post-processors might have
+  // modified the original metadata, e.g. replacing placeholders in values...
+  beanFactory.clearMetadataCache();
+}
+
+```
+
+### registerBeanPostProcessors
+
+上面的 BeanFactoryPostProcessors 处理完了之后，就要处理我们经常使用的 BeanPostProcessors 接口的 bean，这里的处理和上面的 BeanFactoryPostProcessor 很像，会将所有实现了 BeanPostProcessor 的接口按照优先级依次初始化，并且注册到当前 beanFactory 中，后续其他 bean 初始化会循环调用这些实现了 BeanPostProcessor 的 bean 的回调方法 （实现了 BeanPostProcess 的类或者是更早处理的类不能懒加载），同时，细看的人会发现，beanPostProcessors 存放的地方是一个 CopyOnWriteArrayList，对于 beanPostProcessors 来说，使用 CopyOnWriteArrayList 是一个很好的选择，因为这个只有在初始化的时候才会频繁写，后续都是读操作。
+
+```java
+
+protected void registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
+		PostProcessorRegistrationDelegate.registerBeanPostProcessors(beanFactory, this);
+}
+
+public static void registerBeanPostProcessors(
+			ConfigurableListableBeanFactory beanFactory, AbstractApplicationContext applicationContext) {
+
+		// 获取所有实现了 BeanPostProcessor 的 bean 信息
+		String[] postProcessorNames = beanFactory.getBeanNamesForType(BeanPostProcessor.class, true, false);
+
+		// Register BeanPostProcessorChecker that logs an info message when
+		// a bean is created during BeanPostProcessor instantiation, i.e. when
+		// a bean is not eligible for getting processed by all BeanPostProcessors.
+		// 计算数量
+		int beanProcessorTargetCount = beanFactory.getBeanPostProcessorCount() + 1 + postProcessorNames.length;
+		beanFactory.addBeanPostProcessor(new BeanPostProcessorChecker(beanFactory, beanProcessorTargetCount));
+
+		// Separate between BeanPostProcessors that implement PriorityOrdered,
+		// Ordered, and the rest.
+		List<BeanPostProcessor> priorityOrderedPostProcessors = new ArrayList<>();
+		List<BeanPostProcessor> internalPostProcessors = new ArrayList<>();
+		List<String> orderedPostProcessorNames = new ArrayList<>();
+		List<String> nonOrderedPostProcessorNames = new ArrayList<>();
+		for (String ppName : postProcessorNames) {
+			if (beanFactory.isTypeMatch(ppName, PriorityOrdered.class)) {
+				BeanPostProcessor pp = beanFactory.getBean(ppName, BeanPostProcessor.class);
+				priorityOrderedPostProcessors.add(pp);
+				if (pp instanceof MergedBeanDefinitionPostProcessor) {
+					internalPostProcessors.add(pp);
+				}
+			}
+			else if (beanFactory.isTypeMatch(ppName, Ordered.class)) {
+				orderedPostProcessorNames.add(ppName);
+			}
+			else {
+				nonOrderedPostProcessorNames.add(ppName);
+			}
+		}
+
+		// 注册所有实现了 PriorityOrdered 的 bean
+		// First, register the BeanPostProcessors that implement PriorityOrdered.
+		sortPostProcessors(priorityOrderedPostProcessors, beanFactory);
+		registerBeanPostProcessors(beanFactory, priorityOrderedPostProcessors);
+
+		// 注册所有实现了 Ordered 的 bean
+		// Next, register the BeanPostProcessors that implement Ordered.
+		List<BeanPostProcessor> orderedPostProcessors = new ArrayList<>(orderedPostProcessorNames.size());
+		for (String ppName : orderedPostProcessorNames) {
+			BeanPostProcessor pp = beanFactory.getBean(ppName, BeanPostProcessor.class);
+			orderedPostProcessors.add(pp);
+			if (pp instanceof MergedBeanDefinitionPostProcessor) {
+				internalPostProcessors.add(pp);
+			}
+		}
+		sortPostProcessors(orderedPostProcessors, beanFactory);
+		registerBeanPostProcessors(beanFactory, orderedPostProcessors);
+
+		// 注册所有常规的 bean
+		// Now, register all regular BeanPostProcessors.
+		List<BeanPostProcessor> nonOrderedPostProcessors = new ArrayList<>(nonOrderedPostProcessorNames.size());
+		for (String ppName : nonOrderedPostProcessorNames) {
+			BeanPostProcessor pp = beanFactory.getBean(ppName, BeanPostProcessor.class);
+			nonOrderedPostProcessors.add(pp);
+			if (pp instanceof MergedBeanDefinitionPostProcessor) {
+				internalPostProcessors.add(pp);
+			}
+		}
+		registerBeanPostProcessors(beanFactory, nonOrderedPostProcessors);
+
+		// 注册所有内部的 bean （实现了 MergedBeanDefinitionPostProcessor 的bean）
+		// Finally, re-register all internal BeanPostProcessors.
+		sortPostProcessors(internalPostProcessors, beanFactory);
+		registerBeanPostProcessors(beanFactory, internalPostProcessors);
+
+		// Re-register post-processor for detecting inner beans as ApplicationListeners,
+		// moving it to the end of the processor chain (for picking up proxies etc).
+		beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(applicationContext));
+}
+
+```
+
+### finishBeanFactoryInitialization
+
+finishBeanFactoryInitialization 方法，这个方法会初始化所有非懒加载的 bean，这个 bean 上层方法比较简单，实际上，上面的方法对于 bean 的初始化都是委托给了 beanFactory 的 getBean 方法，finishBeanFactoryInitialization 会把所有的 bean 定义进行循环初始化， getBean 方法比较大，在后面单独讲。
+
+```java
+
+protected void finishBeanFactoryInitialization(ConfigurableListableBeanFactory beanFactory) {
+		// 一个数据转换的 bean 可以暂时不理会
+		// Initialize conversion service for this context.
+		if (beanFactory.containsBean(CONVERSION_SERVICE_BEAN_NAME) &&
+				beanFactory.isTypeMatch(CONVERSION_SERVICE_BEAN_NAME, ConversionService.class)) {
+			beanFactory.setConversionService(
+					beanFactory.getBean(CONVERSION_SERVICE_BEAN_NAME, ConversionService.class));
+		}
+
+		// Register a default embedded value resolver if no bean post-processor
+		// (such as a PropertyPlaceholderConfigurer bean) registered any before:
+		// at this point, primarily for resolution in annotation attribute values.
+		if (!beanFactory.hasEmbeddedValueResolver()) {
+			beanFactory.addEmbeddedValueResolver(strVal -> getEnvironment().resolvePlaceholders(strVal));
+		}
+
+		// Initialize LoadTimeWeaverAware beans early to allow for registering their transformers early.
+		String[] weaverAwareNames = beanFactory.getBeanNamesForType(LoadTimeWeaverAware.class, false, false);
+		for (String weaverAwareName : weaverAwareNames) {
+			getBean(weaverAwareName);
+		}
+
+		// Stop using the temporary ClassLoader for type matching.
+		beanFactory.setTempClassLoader(null);
+
+		// Allow for caching all bean definition metadata, not expecting further changes.
+		beanFactory.freezeConfiguration();
+
+		// 初始化所有剩下的且为非懒加载的 bean （Ps.之前直接或者间接实现了相应 BeanPostProcessor 和 BeanFactoryPostProcessor 的 bean 已经被初始化完成了）
+		// Instantiate all remaining (non-lazy-init) singletons.
+		beanFactory.preInstantiateSingletons();
+	}
+
+  @Override
+  	public void preInstantiateSingletons() throws BeansException {
+  		if (logger.isTraceEnabled()) {
+  			logger.trace("Pre-instantiating singletons in " + this);
+  		}
+
+  		// 获取所有 bean 定义信息
+  		// Iterate over a copy to allow for init methods which in turn register new bean definitions.
+  		// While this may not be part of the regular factory bootstrap, it does otherwise work fine.
+  		List<String> beanNames = new ArrayList<>(this.beanDefinitionNames);
+
+  		// 对这些信息都去获取一遍他的 bean 对象
+  		// Trigger initialization of all non-lazy singleton beans...
+  		for (String beanName : beanNames) {
+  			RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+  			if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
+  				// 如果是 FactoryBean，就在 beanName 前面加上 & 符号 （这里后续也会开个坑讲一讲，一般只有在复杂 bean 初始化才会用到，比如 SqlSessionFactoryBean， Dubbo 中的 ReferenceBean）
+  				if (isFactoryBean(beanName)) {
+  					Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
+  					if (bean instanceof FactoryBean) {
+  						final FactoryBean<?> factory = (FactoryBean<?>) bean;
+  						boolean isEagerInit;
+  						if (System.getSecurityManager() != null && factory instanceof SmartFactoryBean) {
+  							isEagerInit = AccessController.doPrivileged((PrivilegedAction<Boolean>)
+  											((SmartFactoryBean<?>) factory)::isEagerInit,
+  									getAccessControlContext());
+  						}
+  						else {
+  							isEagerInit = (factory instanceof SmartFactoryBean &&
+  									((SmartFactoryBean<?>) factory).isEagerInit());
+  						}
+  						if (isEagerInit) {
+  							getBean(beanName);
+  						}
+  					}
+  				}
+  				else {
+  					// 获取 bean
+  					getBean(beanName);
+  				}
+  			}
+  		}
+
+  		// Trigger post-initialization callback for all applicable beans...
+  		for (String beanName : beanNames) {
+  			Object singletonInstance = getSingleton(beanName);
+  			if (singletonInstance instanceof SmartInitializingSingleton) {
+  				final SmartInitializingSingleton smartSingleton = (SmartInitializingSingleton) singletonInstance;
+  				if (System.getSecurityManager() != null) {
+  					AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+  						smartSingleton.afterSingletonsInstantiated();
+  						return null;
+  					}, getAccessControlContext());
+  				}
+  				else {
+  					smartSingleton.afterSingletonsInstantiated();
+  				}
+  			}
+  		}
+}
+```
+
+### getBean
+
+getBean 方法是获取 bean 信息的入口，若没有相应的示例则会创建，可见整个 bean 的创建过程都包在了 getBean 方法中，同时，在 getBean 方法中也有比较重要的如何处理循环引用，什么是循环引用？A 服务依赖了 B 服务， B 服务又依赖了 A 服务，我们知道，Spring 非构造器注入才支持处理这种循环引用，仔细想一下，如果是构造器注入，肯定没有办法处理这种循环应用的问题，那么 Spring 非构造器是如何处理的呢？这里就会涉及到 Spring 中的 bean 三级缓存，即 singletonObjects，earlySingletonObjects 和 singletonFactories，顾名思义，singletonObjects 就是完成了实例化和初始化的 bean，earlySingletonObjects 是早期的 bean 信息，我认为可以理解为完成了实例化，但还没有初始化的 bean，singletonFactories 使用与获取早期 bean 的工厂
+
+```
+
 ####
 
 
