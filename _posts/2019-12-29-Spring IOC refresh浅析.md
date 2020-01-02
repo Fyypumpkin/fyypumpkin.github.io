@@ -672,7 +672,7 @@ protected <T> T doGetBean(final String name, @Nullable final Class<T> requiredTy
 					bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
 				}
 
-				// 原型模式的
+				// 原型模式的 (原型模式下，所有的 bean 都不会加入缓存中，所以每次进来都会创建)
 				else if (mbd.isPrototype()) {
 					// It's a prototype -> create a new instance.
 					Object prototypeInstance = null;
