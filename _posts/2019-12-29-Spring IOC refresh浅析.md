@@ -886,6 +886,7 @@ protected Object createBean(String beanName, RootBeanDefinition mbd, @Nullable O
   }
 }
 
+// 这里解释一下，BeanPostProcessor 作用域对象的初始化，而且 InstantiationAwareBeanPostProcessor 作用于对象的实例化
 @Nullable
 protected Object resolveBeforeInstantiation(String beanName, RootBeanDefinition mbd) {
   Object bean = null;
